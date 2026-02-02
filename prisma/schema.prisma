@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model VideoRequest {
+  id          String   @id @default(uuid())
+  keyword     String
+  language    String
+  style       String
+  duration    String
+  aspectRatio String
+  status      String   @default("draft") // draft, processing, completed, failed
+  createdAt   DateTime @default(now())
+}
