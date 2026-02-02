@@ -22,8 +22,9 @@ export default function VideoRequestItem({ request }: { request: VideoRequest })
         setIsGenerating(true)
         try {
             await generatePromptAction(request.id)
-        } catch (e) {
-            alert('Failed to generate prompt. Please try again.')
+        } catch (e: any) {
+            console.error(e)
+            alert(e.message || 'Failed to generate prompt. Please try again.')
         } finally {
             setIsGenerating(false)
         }
@@ -47,10 +48,10 @@ export default function VideoRequestItem({ request }: { request: VideoRequest })
                     <div className="flex items-center space-x-2">
                         <span
                             className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${request.status === 'completed'
-                                    ? 'bg-green-50 text-green-700 ring-green-600/20'
-                                    : request.status === 'failed'
-                                        ? 'bg-red-50 text-red-700 ring-red-600/20'
-                                        : 'bg-yellow-50 text-yellow-800 ring-yellow-600/20'
+                                ? 'bg-green-50 text-green-700 ring-green-600/20'
+                                : request.status === 'failed'
+                                    ? 'bg-red-50 text-red-700 ring-red-600/20'
+                                    : 'bg-yellow-50 text-yellow-800 ring-yellow-600/20'
                                 }`}
                         >
                             {request.status}
@@ -60,8 +61,8 @@ export default function VideoRequestItem({ request }: { request: VideoRequest })
                             onClick={handleGeneratePrompt}
                             disabled={isGenerating}
                             className={`text-xs px-3 py-1.5 rounded-md text-white font-medium transition-colors ${isGenerating
-                                    ? 'bg-purple-300 cursor-not-allowed'
-                                    : 'bg-purple-600 hover:bg-purple-700'
+                                ? 'bg-purple-300 cursor-not-allowed'
+                                : 'bg-purple-600 hover:bg-purple-700'
                                 }`}
                         >
                             {isGenerating ? 'Generating...' : request.generatedPrompt ? 'Regenerate Prompt' : 'Generate Prompt'}

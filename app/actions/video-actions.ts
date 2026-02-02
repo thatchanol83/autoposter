@@ -104,8 +104,18 @@ export async function generatePromptAction(requestId: string) {
         revalidatePath('/dashboard')
         return { success: true }
 
-    } catch (e) {
+    } catch (e: any) {
         console.error('Failed to generate prompt', e)
-        throw new Error('Failed to generate prompt')
+        // Return the specific error message to help debugging
+        if (e.message.includes('GEMINI_API_KEY')) {
+            throw new Error('Server Error: GEMINI_API_KEY is not configured')
+        }
+        if (e.code === 'P2025') {
+            throw new Error('Video request not found')
+        }
+        if (e.code === 'P2022' || e.message.includes('Column')) {
+            throw new Error('Database Error: Migration not applied (Missing generatedPrompt column)')
+        }
+        throw new Error(e.message || 'Failed to generate prompt')
     }
 }
