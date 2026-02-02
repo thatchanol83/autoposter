@@ -54,9 +54,15 @@ export async function getVideoRequests() {
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export async function generatePromptAction(requestId: string) {
-    const apiKey = process.env.GEMINI_API_KEY
+    const apiKey = process.env.GEMINI_API_KEY?.trim()
     if (!apiKey) {
         throw new Error('GEMINI_API_KEY is not set')
+    }
+
+    console.log('Generating prompt for ID:', requestId)
+    // Log masked API key for debugging (safe to expose in server logs)
+    if (apiKey) {
+        console.log('Using Gemini API Key starting with:', apiKey.substring(0, 5) + '...')
     }
 
     try {
@@ -66,12 +72,13 @@ export async function generatePromptAction(requestId: string) {
         })
 
         if (!videoRequest) {
-            throw new Error('Video request not found')
+            return { success: false, error: 'Video request not found' }
         }
 
         // 2. Call Gemini API
         const genAI = new GoogleGenerativeAI(apiKey)
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+        // Revert to gemini-1.5-flash as it is the standard model
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
         const prompt = `
             You are an expert AI video generation prompt engineer.
@@ -106,10 +113,13 @@ export async function generatePromptAction(requestId: string) {
 
     } catch (e: any) {
         console.error('Failed to generate prompt', e)
-        // Return the specific error message to help debugging
-        // Return the specific error message to help debugging
-        if (e.message.includes('GEMINI_API_KEY')) {
-            return { success: false, error: 'Server Error: GEMINI_API_KEY is not configured' }
+
+        // Return specific error messages
+        if (e.message.includes('GEMINI_API_KEY') || e.message.includes('API key not valid')) {
+            return { success: false, error: 'Server Error: Invalid GEMINI_API_KEY' }
+        }
+        if (e.message.includes('404') || e.message.includes('Not Found')) {
+            return { success: false, error: 'Gemini Model Not Found (404). Please ensure your API Key is valid and from Google AI Studio.' }
         }
         if (e.code === 'P2025') {
             return { success: false, error: 'Video request not found' }
