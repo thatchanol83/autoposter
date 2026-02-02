@@ -71,7 +71,7 @@ export async function generatePromptAction(requestId: string) {
 
         // 2. Call Gemini API
         const genAI = new GoogleGenerativeAI(apiKey)
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+        const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
 
         const prompt = `
             You are an expert AI video generation prompt engineer.
