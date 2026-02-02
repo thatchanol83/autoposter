@@ -30,7 +30,7 @@ export async function createVideoRequest(formData: FormData) {
         })
     } catch (e) {
         console.error('Failed to create video request', e)
-        return { error: 'Failed to create request' }
+        throw new Error('Failed to create request')
     }
 
     revalidatePath('/dashboard')
