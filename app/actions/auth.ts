@@ -20,6 +20,7 @@ export async function login(prevState: any, formData: FormData) {
             secure: process.env.NODE_ENV === 'production',
             maxAge: 60 * 60 * 24 * 7, // 1 week
             path: '/',
+            sameSite: 'lax',
         })
 
         redirect('/dashboard')
