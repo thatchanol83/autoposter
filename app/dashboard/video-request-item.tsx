@@ -21,10 +21,13 @@ export default function VideoRequestItem({ request }: { request: VideoRequest })
     const handleGeneratePrompt = async () => {
         setIsGenerating(true)
         try {
-            await generatePromptAction(request.id)
+            const result = await generatePromptAction(request.id)
+            if (!result.success && result.error) {
+                alert(result.error)
+            }
         } catch (e: any) {
             console.error(e)
-            alert(e.message || 'Failed to generate prompt. Please try again.')
+            alert('An unexpected error occurred.')
         } finally {
             setIsGenerating(false)
         }

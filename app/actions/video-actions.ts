@@ -107,15 +107,16 @@ export async function generatePromptAction(requestId: string) {
     } catch (e: any) {
         console.error('Failed to generate prompt', e)
         // Return the specific error message to help debugging
+        // Return the specific error message to help debugging
         if (e.message.includes('GEMINI_API_KEY')) {
-            throw new Error('Server Error: GEMINI_API_KEY is not configured')
+            return { success: false, error: 'Server Error: GEMINI_API_KEY is not configured' }
         }
         if (e.code === 'P2025') {
-            throw new Error('Video request not found')
+            return { success: false, error: 'Video request not found' }
         }
         if (e.code === 'P2022' || e.message.includes('Column')) {
-            throw new Error('Database Error: Migration not applied (Missing generatedPrompt column)')
+            return { success: false, error: 'Database Error: Migration not applied (Missing generatedPrompt column)' }
         }
-        throw new Error(e.message || 'Failed to generate prompt')
+        return { success: false, error: e.message || 'Failed to generate prompt' }
     }
 }
