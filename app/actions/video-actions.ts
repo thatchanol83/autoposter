@@ -77,30 +77,27 @@ export async function generatePromptAction(requestId: string) {
 
         // 2. Call Gemini API
         const genAI = new GoogleGenerativeAI(apiKey)
-        // Revert to gemini-1.5-flash as it is the standard model
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
-        const prompt = `
-            You are an expert AI video generation prompt engineer.
-            Create a highly detailed and descriptive prompt for an AI video generator based on the following details:
-            
-            - Topic/Keyword: ${videoRequest.keyword}
-            - Language: ${videoRequest.language}
-            - Style: ${videoRequest.style}
-            - Duration: ${videoRequest.duration}
-            - Aspect Ratio: ${videoRequest.aspectRatio}
+        let generatedPrompt = ''
 
-            Guidelines:
-            - The prompt should describe the visual scene, camera movements, lighting, and mood.
-            - It should be suitable for high-quality video generation (like Sora, Kling, Runway).
-            - Do NOT mention "AI generated" or "Gemini" in the prompt itself.
-            - Provide ONLY the prompt text, no headers or explanations.
-            - If the language is Thai, ensure the prompt is descriptive enough, but usually video AI works best with English prompts. If the video content should contain Thai text/culture, specify that, but write the prompt instructions in English.
-        `
-
-        const result = await model.generateContent(prompt)
-        const response = await result.response
-        const generatedPrompt = response.text()
+        try {
+            // Try standard 1.5-flash first
+            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+            const result = await model.generateContent(prompt)
+            const response = await result.response
+            generatedPrompt = response.text()
+        } catch (originalError: any) {
+            console.warn('gemini-1.5-flash failed, trying fallback to gemini-pro', originalError.message)
+            // Fallback to older gemini-pro
+            if (originalError.message.includes('404') || originalError.message.includes('not found')) {
+                const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+                const result = await model.generateContent(prompt)
+                const response = await result.response
+                generatedPrompt = response.text()
+            } else {
+                throw originalError
+            }
+        }
 
         // 3. Update database
         await prisma.videoRequest.update({
