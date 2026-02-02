@@ -76,7 +76,26 @@ export async function generatePromptAction(requestId: string) {
         }
 
         // 2. Call Gemini API
+        // 2. Call Gemini API
         const genAI = new GoogleGenerativeAI(apiKey)
+
+        const prompt = `
+            You are an expert AI video generation prompt engineer.
+            Create a highly detailed and descriptive prompt for an AI video generator based on the following details:
+            
+            - Topic/Keyword: ${videoRequest.keyword}
+            - Language: ${videoRequest.language}
+            - Style: ${videoRequest.style}
+            - Duration: ${videoRequest.duration}
+            - Aspect Ratio: ${videoRequest.aspectRatio}
+
+            Guidelines:
+            - The prompt should describe the visual scene, camera movements, lighting, and mood.
+            - It should be suitable for high-quality video generation (like Sora, Kling, Runway).
+            - Do NOT mention "AI generated" or "Gemini" in the prompt itself.
+            - Provide ONLY the prompt text, no headers or explanations.
+            - If the language is Thai, ensure the prompt is descriptive enough, but usually video AI works best with English prompts. If the video content should contain Thai text/culture, specify that, but write the prompt instructions in English.
+        `
 
         let generatedPrompt = ''
 
