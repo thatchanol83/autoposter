@@ -1,6 +1,8 @@
 import { getVideoRequests } from '../actions/video-actions'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
     const videoRequests = await getVideoRequests()
 
@@ -53,10 +55,10 @@ export default async function DashboardPage() {
                                     <div>
                                         <span
                                             className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${request.status === 'completed'
-                                                    ? 'bg-green-50 text-green-700 ring-green-600/20'
-                                                    : request.status === 'failed'
-                                                        ? 'bg-red-50 text-red-700 ring-red-600/20'
-                                                        : 'bg-yellow-50 text-yellow-800 ring-yellow-600/20'
+                                                ? 'bg-green-50 text-green-700 ring-green-600/20'
+                                                : request.status === 'failed'
+                                                    ? 'bg-red-50 text-red-700 ring-red-600/20'
+                                                    : 'bg-yellow-50 text-yellow-800 ring-yellow-600/20'
                                                 }`}
                                         >
                                             {request.status}
