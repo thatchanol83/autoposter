@@ -1,5 +1,6 @@
 import { getVideoRequests } from '../actions/video-actions'
 import Link from 'next/link'
+import VideoRequestItem from './video-request-item'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,30 +43,7 @@ export default async function DashboardPage() {
                 ) : (
                     <ul className="divide-y divide-gray-100">
                         {videoRequests.map((request) => (
-                            <li key={request.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                                <div className="flex items-center space-x-4">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900 truncate">
-                                            {request.keyword}
-                                        </p>
-                                        <p className="text-xs text-gray-500 truncate">
-                                            {request.style} • {new Date(request.createdAt).toLocaleString()}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <span
-                                            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${request.status === 'completed'
-                                                ? 'bg-green-50 text-green-700 ring-green-600/20'
-                                                : request.status === 'failed'
-                                                    ? 'bg-red-50 text-red-700 ring-red-600/20'
-                                                    : 'bg-yellow-50 text-yellow-800 ring-yellow-600/20'
-                                                }`}
-                                        >
-                                            {request.status}
-                                        </span>
-                                    </div>
-                                </div>
-                            </li>
+                            <VideoRequestItem key={request.id} request={request} />
                         ))}
                     </ul>
                 )}
