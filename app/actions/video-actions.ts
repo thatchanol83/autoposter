@@ -261,22 +261,25 @@ export async function checkVideoStatusAction(requestId: string) {
         const jobData = data.data || {}
 
         // Status mapping: waiting, queuing, generating, success, fail
-        const status = jobData.status
+        // Try multiple locations for status field
+        let status = jobData.status || data.status || jobData.state || data.state
+
         let newStatus = videoRequest.videoStatus
         let videoUrl = videoRequest.videoUrl
 
-        if (status === 'success') {
+        if (status === 'success' || status === 'completed') {
             newStatus = 'completed'
             videoUrl = jobData.resultJson?.url || jobData.result?.video_url || jobData.video_url || jobData.url
-        } else if (status === 'fail') {
+        } else if (status === 'fail' || status === 'failed') {
             newStatus = 'failed'
             console.error('Video Generation Failed:', jobData.failMsg || 'Unknown error')
-        } else if (['waiting', 'queuing', 'generating'].includes(status)) {
+        } else if (['waiting', 'queuing', 'generating', 'processing'].includes(status)) {
             // Update to specific status if it matches known intermediate states
             newStatus = status
         } else {
-            // Fallback for unknown status, log it
+            // Fallback for unknown status, log FULL response
             console.log('Unknown Kie.ai status:', status)
+            console.log('Full Kie.ai Response:', JSON.stringify(data, null, 2))
         }
 
         if (newStatus !== videoRequest.videoStatus) {
