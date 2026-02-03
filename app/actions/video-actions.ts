@@ -202,15 +202,17 @@ export async function generateVideoAction(requestId: string) {
         }
 
         const data = await response.json()
-        // Kie.ai typically returns { code: 0, msg: "success", data: { id: "..." } } based on common patterns
-        // But user didn't show response. Assuming standard data structure or just data.id
-        // Let's inspect the data structure in logs if needed.
-        // Assuming data.data.id or data.id. 
+
+        // Handle Kie.ai specific error codes
+        if (data.code === 402 || data.msg?.includes('Credits insufficient')) {
+            return { success: false, error: 'Kie.ai Error: Insufficient Credits. Please top up your account to generate videos.' }
+        }
+
         const soraTaskId = data.data?.id || data.id || data.task_id || data.data?.taskId || data.data?.task_id
 
         if (!soraTaskId) {
             console.error('Kie.ai Response:', data)
-            throw new Error(`No task ID returned from Kie.ai. Response: ${JSON.stringify(data)}`)
+            throw new Error(`Kie.ai Error (${data.code || 'Unknown'}): ${data.msg || 'No task ID returned'}`)
         }
 
         await prisma.videoRequest.update({
