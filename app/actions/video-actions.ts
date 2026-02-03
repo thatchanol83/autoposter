@@ -208,9 +208,11 @@ export async function generateVideoAction(requestId: string) {
         // Assuming data.data.id or data.id. 
         const soraTaskId = data.data?.id || data.id || data.task_id
 
+        const soraTaskId = data.data?.id || data.id || data.task_id || data.data?.taskId || data.data?.task_id
+
         if (!soraTaskId) {
             console.error('Kie.ai Response:', data)
-            throw new Error('No task ID returned from Kie.ai')
+            throw new Error(`No task ID returned from Kie.ai. Response: ${JSON.stringify(data)}`)
         }
 
         await prisma.videoRequest.update({
