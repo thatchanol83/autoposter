@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { generatePromptAction, generateVideoAction, checkVideoStatusAction } from '../actions/video-actions'
 
 interface VideoRequest {
@@ -19,6 +20,7 @@ interface VideoRequest {
 }
 
 export default function VideoRequestItem({ request }: { request: VideoRequest }) {
+    const router = useRouter()
     const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
     const [isGeneratingVideo, setIsGeneratingVideo] = useState(false)
 
@@ -27,11 +29,15 @@ export default function VideoRequestItem({ request }: { request: VideoRequest })
         let interval: NodeJS.Timeout
         if (request.videoStatus === 'processing') {
             interval = setInterval(async () => {
-                await checkVideoStatusAction(request.id)
+                const result = await checkVideoStatusAction(request.id)
+                // If status changed (e.g. became completed or failed), refresh the UI
+                if (result.success && result.status && result.status !== 'processing') {
+                    router.refresh()
+                }
             }, 5000) // Check every 5 seconds
         }
         return () => clearInterval(interval)
-    }, [request.videoStatus, request.id])
+    }, [request.videoStatus, request.id, router])
 
     const handleGeneratePrompt = async () => {
         setIsGeneratingPrompt(true)
@@ -88,8 +94,8 @@ export default function VideoRequestItem({ request }: { request: VideoRequest })
                         {/* Video Status Badge */}
                         {request.videoStatus && request.videoStatus !== 'idle' && (
                             <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${request.videoStatus === 'completed' ? 'bg-green-50 text-green-700 ring-green-600/20' :
-                                    request.videoStatus === 'failed' ? 'bg-red-50 text-red-700 ring-red-600/20' :
-                                        'bg-blue-50 text-blue-700 ring-blue-600/20'
+                                request.videoStatus === 'failed' ? 'bg-red-50 text-red-700 ring-red-600/20' :
+                                    'bg-blue-50 text-blue-700 ring-blue-600/20'
                                 }`}>
                                 {request.videoStatus === 'processing' ? 'Generating Video...' : request.videoStatus}
                             </span>
@@ -100,8 +106,8 @@ export default function VideoRequestItem({ request }: { request: VideoRequest })
                             onClick={handleGeneratePrompt}
                             disabled={isGeneratingPrompt}
                             className={`text-xs px-3 py-1.5 rounded-md text-white font-medium transition-colors ${isGeneratingPrompt
-                                    ? 'bg-purple-300 cursor-not-allowed'
-                                    : 'bg-purple-600 hover:bg-purple-700'
+                                ? 'bg-purple-300 cursor-not-allowed'
+                                : 'bg-purple-600 hover:bg-purple-700'
                                 }`}
                         >
                             {isGeneratingPrompt ? 'Generating...' : request.generatedPrompt ? 'Regenerate Prompt' : 'Generate Prompt'}
@@ -113,8 +119,8 @@ export default function VideoRequestItem({ request }: { request: VideoRequest })
                                 onClick={handleGenerateVideo}
                                 disabled={isGeneratingVideo}
                                 className={`text-xs px-3 py-1.5 rounded-md text-white font-medium transition-colors ${isGeneratingVideo
-                                        ? 'bg-indigo-300 cursor-not-allowed'
-                                        : 'bg-indigo-600 hover:bg-indigo-700'
+                                    ? 'bg-indigo-300 cursor-not-allowed'
+                                    : 'bg-indigo-600 hover:bg-indigo-700'
                                     }`}
                             >
                                 {isGeneratingVideo ? 'Starting...' : request.videoStatus === 'failed' ? 'Retry Video' : 'Generate Video'}
