@@ -333,3 +333,68 @@ export async function checkVideoStatusAction(requestId: string) {
         return { success: false, error: e.message }
     }
 }
+
+export async function toggleFavoriteAction(requestId: string) {
+    try {
+        const videoRequest = await prisma.videoRequest.findUnique({
+            where: { id: requestId },
+        })
+
+        if (!videoRequest) {
+            return { success: false, error: 'Request not found' }
+        }
+
+        const updatedRequest = await prisma.videoRequest.update({
+            where: { id: requestId },
+            data: { isFavorite: !videoRequest.isFavorite },
+        })
+
+        revalidatePath('/dashboard')
+        revalidatePath('/dashboard/favorites')
+        return { success: true, isFavorite: updatedRequest.isFavorite }
+
+    } catch (e: any) {
+        console.error('Failed to toggle favorite', e)
+        return { success: false, error: e.message }
+    }
+}
+
+export async function regenerateVideoRequestAction(formData: FormData) {
+    const sourceRequestId = formData.get('sourceRequestId') as string
+    const newKeyword = formData.get('newKeyword') as string
+
+    if (!sourceRequestId || !newKeyword) {
+        return { success: false, error: 'Missing required fields' }
+    }
+
+    try {
+        const sourceRequest = await prisma.videoRequest.findUnique({
+            where: { id: sourceRequestId },
+        })
+
+        if (!sourceRequest) {
+            return { success: false, error: 'Source request not found' }
+        }
+
+        // Create new request with matched settings but new keyword
+        await prisma.videoRequest.create({
+            data: {
+                keyword: newKeyword,
+                language: sourceRequest.language,
+                style: sourceRequest.style,
+                duration: sourceRequest.duration,
+                aspectRatio: sourceRequest.aspectRatio,
+                status: 'draft',
+                parentRequestId: sourceRequest.id,
+            },
+        })
+
+        revalidatePath('/dashboard')
+        revalidatePath('/dashboard/favorites')
+        return { success: true }
+
+    } catch (e: any) {
+        console.error('Failed to regenerate request', e)
+        return { success: false, error: e.message }
+    }
+}
