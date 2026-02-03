@@ -100,22 +100,14 @@ export async function generatePromptAction(requestId: string) {
         let generatedPrompt = ''
 
         try {
-            // Try standard 1.5-flash first
-            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+            // Use gemini-2.0-flash as confirmed by user's key access
+            const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
             const result = await model.generateContent(prompt)
             const response = await result.response
             generatedPrompt = response.text()
         } catch (originalError: any) {
-            console.warn('gemini-1.5-flash failed, trying fallback to gemini-pro', originalError.message)
-            // Fallback to older gemini-pro
-            if (originalError.message.includes('404') || originalError.message.includes('not found')) {
-                const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
-                const result = await model.generateContent(prompt)
-                const response = await result.response
-                generatedPrompt = response.text()
-            } else {
-                throw originalError
-            }
+            console.warn('gemini-2.0-flash failed', originalError.message)
+            throw originalError
         }
 
         // 3. Update database
