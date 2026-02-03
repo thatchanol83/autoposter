@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { generatePromptAction } from '../actions/video-actions'
+import { useState, useEffect } from 'react'
+import { generatePromptAction, generateVideoAction, checkVideoStatusAction } from '../actions/video-actions'
 
 interface VideoRequest {
     id: string
@@ -12,14 +12,29 @@ interface VideoRequest {
     aspectRatio: string
     status: string
     generatedPrompt: string | null
+    soraTaskId: string | null
+    videoStatus: string | null
+    videoUrl: string | null
     createdAt: Date
 }
 
 export default function VideoRequestItem({ request }: { request: VideoRequest }) {
-    const [isGenerating, setIsGenerating] = useState(false)
+    const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
+    const [isGeneratingVideo, setIsGeneratingVideo] = useState(false)
+
+    // Poll for video status if processing
+    useEffect(() => {
+        let interval: NodeJS.Timeout
+        if (request.videoStatus === 'processing') {
+            interval = setInterval(async () => {
+                await checkVideoStatusAction(request.id)
+            }, 5000) // Check every 5 seconds
+        }
+        return () => clearInterval(interval)
+    }, [request.videoStatus, request.id])
 
     const handleGeneratePrompt = async () => {
-        setIsGenerating(true)
+        setIsGeneratingPrompt(true)
         try {
             const result = await generatePromptAction(request.id)
             if (!result.success && result.error) {
@@ -29,7 +44,22 @@ export default function VideoRequestItem({ request }: { request: VideoRequest })
             console.error(e)
             alert('An unexpected error occurred.')
         } finally {
-            setIsGenerating(false)
+            setIsGeneratingPrompt(false)
+        }
+    }
+
+    const handleGenerateVideo = async () => {
+        setIsGeneratingVideo(true)
+        try {
+            const result = await generateVideoAction(request.id)
+            if (!result.success && result.error) {
+                alert(result.error)
+            }
+        } catch (e: any) {
+            console.error(e)
+            alert('Failed to start video generation.')
+        } finally {
+            setIsGeneratingVideo(false)
         }
     }
 
@@ -49,27 +79,60 @@ export default function VideoRequestItem({ request }: { request: VideoRequest })
                         </p>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <span
-                            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${request.status === 'completed'
-                                ? 'bg-green-50 text-green-700 ring-green-600/20'
-                                : request.status === 'failed'
-                                    ? 'bg-red-50 text-red-700 ring-red-600/20'
-                                    : 'bg-yellow-50 text-yellow-800 ring-yellow-600/20'
-                                }`}
-                        >
-                            {request.status}
+                        {/* Prompt Status Badge */}
+                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${request.generatedPrompt ? 'bg-green-50 text-green-700 ring-green-600/20' : 'bg-gray-50 text-gray-600 ring-gray-500/10'
+                            }`}>
+                            {request.generatedPrompt ? 'Prompt Ready' : 'No Prompt'}
                         </span>
 
+                        {/* Video Status Badge */}
+                        {request.videoStatus && request.videoStatus !== 'idle' && (
+                            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ${request.videoStatus === 'completed' ? 'bg-green-50 text-green-700 ring-green-600/20' :
+                                    request.videoStatus === 'failed' ? 'bg-red-50 text-red-700 ring-red-600/20' :
+                                        'bg-blue-50 text-blue-700 ring-blue-600/20'
+                                }`}>
+                                {request.videoStatus === 'processing' ? 'Generating Video...' : request.videoStatus}
+                            </span>
+                        )}
+
+                        {/* Prompt Button */}
                         <button
                             onClick={handleGeneratePrompt}
-                            disabled={isGenerating}
-                            className={`text-xs px-3 py-1.5 rounded-md text-white font-medium transition-colors ${isGenerating
-                                ? 'bg-purple-300 cursor-not-allowed'
-                                : 'bg-purple-600 hover:bg-purple-700'
+                            disabled={isGeneratingPrompt}
+                            className={`text-xs px-3 py-1.5 rounded-md text-white font-medium transition-colors ${isGeneratingPrompt
+                                    ? 'bg-purple-300 cursor-not-allowed'
+                                    : 'bg-purple-600 hover:bg-purple-700'
                                 }`}
                         >
-                            {isGenerating ? 'Generating...' : request.generatedPrompt ? 'Regenerate Prompt' : 'Generate Prompt'}
+                            {isGeneratingPrompt ? 'Generating...' : request.generatedPrompt ? 'Regenerate Prompt' : 'Generate Prompt'}
                         </button>
+
+                        {/* Video Button */}
+                        {request.generatedPrompt && (request.videoStatus === 'idle' || request.videoStatus === 'failed') && (
+                            <button
+                                onClick={handleGenerateVideo}
+                                disabled={isGeneratingVideo}
+                                className={`text-xs px-3 py-1.5 rounded-md text-white font-medium transition-colors ${isGeneratingVideo
+                                        ? 'bg-indigo-300 cursor-not-allowed'
+                                        : 'bg-indigo-600 hover:bg-indigo-700'
+                                    }`}
+                            >
+                                {isGeneratingVideo ? 'Starting...' : request.videoStatus === 'failed' ? 'Retry Video' : 'Generate Video'}
+                            </button>
+                        )}
+
+                        {/* View Video Button */}
+                        {request.videoStatus === 'completed' && request.videoUrl && (
+                            <a
+                                href={request.videoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-700 text-white font-medium transition-colors"
+                            >
+                                View Video
+                            </a>
+                        )}
+
                     </div>
                 </div>
 
