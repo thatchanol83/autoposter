@@ -135,7 +135,7 @@ export async function generatePromptAction(requestId: string) {
             return { success: false, error: 'Server Error: Invalid GEMINI_API_KEY' }
         }
         if (e.message.includes('404') || e.message.includes('Not Found')) {
-            return { success: false, error: 'Gemini Model Not Found (404). Please ensure your API Key is valid and from Google AI Studio.' }
+            return { success: false, error: `Gemini Model Not Found (404). \n\nRaw Error: ${e.message} \n\nTip: The API Key might belong to a different project than the one you enabled the API in.` }
         }
         if (e.code === 'P2025') {
             return { success: false, error: 'Video request not found' }
