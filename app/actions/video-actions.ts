@@ -206,8 +206,6 @@ export async function generateVideoAction(requestId: string) {
         // But user didn't show response. Assuming standard data structure or just data.id
         // Let's inspect the data structure in logs if needed.
         // Assuming data.data.id or data.id. 
-        const soraTaskId = data.data?.id || data.id || data.task_id
-
         const soraTaskId = data.data?.id || data.id || data.task_id || data.data?.taskId || data.data?.task_id
 
         if (!soraTaskId) {
