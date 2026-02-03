@@ -130,12 +130,30 @@ export async function generatePromptAction(requestId: string) {
     } catch (e: any) {
         console.error('Failed to generate prompt', e)
 
+        // Debug: Try to list models
+        let modelListInfo = 'Could not list models.'
+        try {
+            if (apiKey) {
+                const listResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`)
+                if (listResponse.ok) {
+                    const data = await listResponse.json()
+                    const modelNames = data.models?.map((m: any) => m.name) || []
+                    modelListInfo = `Available Models for this Key: ${modelNames.join(', ')}`
+                } else {
+                    const errorText = await listResponse.text()
+                    modelListInfo = `List Models Failed: ${listResponse.status} - ${errorText}`
+                }
+            }
+        } catch (listErr) {
+            console.error('List models error', listErr)
+        }
+
         // Return specific error messages
         if (e.message.includes('GEMINI_API_KEY') || e.message.includes('API key not valid')) {
             return { success: false, error: 'Server Error: Invalid GEMINI_API_KEY' }
         }
         if (e.message.includes('404') || e.message.includes('Not Found')) {
-            return { success: false, error: `Gemini Model Not Found (404). \n\nRaw Error: ${e.message} \n\nTip: The API Key might belong to a different project than the one you enabled the API in.` }
+            return { success: false, error: `Gemini Model Not Found (404). \n\n${modelListInfo} \n\nRaw Error: ${e.message}` }
         }
         if (e.code === 'P2025') {
             return { success: false, error: 'Video request not found' }
