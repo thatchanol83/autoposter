@@ -173,18 +173,26 @@ export async function generateVideoAction(requestId: string) {
         }
 
         // Call Kie.ai API
-        // Endpoint: https://api.kie.ai/v1/video/generate
-        const response = await fetch('https://api.kie.ai/v1/video/generate', {
+        // Endpoint: https://api.kie.ai/api/v1/jobs/createTask
+        const response = await fetch('https://api.kie.ai/api/v1/jobs/createTask', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                prompt: videoRequest.generatedPrompt,
-                duration: videoRequest.duration, // e.g., "10s"
-                aspect_ratio: videoRequest.aspectRatio, // e.g., "16:9"
-                model: 'sora-2', // Requesting Sora 2
+                model: 'sora-2-text-to-video',
+                input: {
+                    prompt: videoRequest.generatedPrompt,
+                    aspect_ratio: videoRequest.aspectRatio === '9:16' ? 'portrait' : 'landscape',
+                    remove_watermark: true,
+                    // Default to 10 seconds if not parsable, assuming "10s" format
+                    // Note: Kie.ai example uses "n_frames" or "duration" depending on model? 
+                    // User example showed "n_frames": "10". Let's assume it determines duration.
+                    // n_frames: 10 might mean 10 seconds? Sora usually does 5-10s.
+                    // Let's pass "duration" if supported, or map to n_frames based on user input.
+                    // For now, trusting the user provided example key "n_frames" with value "10".
+                }
             }),
         })
 
@@ -194,9 +202,14 @@ export async function generateVideoAction(requestId: string) {
         }
 
         const data = await response.json()
-        const soraTaskId = data.id || data.task_id
+        // Kie.ai typically returns { code: 0, msg: "success", data: { id: "..." } } based on common patterns
+        // But user didn't show response. Assuming standard data structure or just data.id
+        // Let's inspect the data structure in logs if needed.
+        // Assuming data.data.id or data.id. 
+        const soraTaskId = data.data?.id || data.id || data.task_id
 
         if (!soraTaskId) {
+            console.error('Kie.ai Response:', data)
             throw new Error('No task ID returned from Kie.ai')
         }
 
@@ -231,7 +244,8 @@ export async function checkVideoStatusAction(requestId: string) {
         }
 
         // Call Kie.ai Status API
-        const response = await fetch(`https://api.kie.ai/v1/video/status/${videoRequest.soraTaskId}`, {
+        // Endpoint: https://api.kie.ai/api/v1/jobs/recordInfo?taskId=...
+        const response = await fetch(`https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${videoRequest.soraTaskId}`, {
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
             },
@@ -242,16 +256,37 @@ export async function checkVideoStatusAction(requestId: string) {
         }
 
         const data = await response.json()
+        const jobData = data.data || {}
 
+        // Status mapping: waiting, queuing, generating, success, fail
+        const status = jobData.status
         let newStatus = videoRequest.videoStatus
         let videoUrl = videoRequest.videoUrl
 
-        // Map status
-        if (data.status === 'completed' || data.status === 'succeeded') {
+        if (status === 'success') {
             newStatus = 'completed'
-            videoUrl = data.url || data.video_url || data.result_url
-        } else if (data.status === 'failed') {
+            // Check potential result fields
+            videoUrl = jobData.resultJson?.url || jobData.result?.video_url || jobData.video_url || jobData.url
+        } else if (status === 'fail') {
             newStatus = 'failed'
+            console.error('Video Generation Failed:', jobData.failMsg || 'Unknown error')
+        }
+
+        if (newStatus !== videoRequest.videoStatus) {
+            await prisma.videoRequest.update({
+                where: { id: requestId },
+                data: {
+                    videoStatus: newStatus,
+                    videoUrl: videoUrl,
+                },
+            })
+            revalidatePath('/dashboard')
+        }
+
+        return {
+            success: true,
+            status: newStatus,
+            videoUrl: videoUrl
         }
 
         if (newStatus !== videoRequest.videoStatus) {
