@@ -156,3 +156,123 @@ export async function generatePromptAction(requestId: string) {
         return { success: false, error: e.message || 'Failed to generate prompt' }
     }
 }
+
+export async function generateVideoAction(requestId: string) {
+    const apiKey = process.env.KIE_API_KEY
+    if (!apiKey) {
+        return { success: false, error: 'KIE_API_KEY is not set' }
+    }
+
+    try {
+        const videoRequest = await prisma.videoRequest.findUnique({
+            where: { id: requestId },
+        })
+
+        if (!videoRequest || !videoRequest.generatedPrompt) {
+            return { success: false, error: 'Request or prompt not found' }
+        }
+
+        // Call Kie.ai API
+        // Endpoint: https://api.kie.ai/v1/video/generate
+        const response = await fetch('https://api.kie.ai/v1/video/generate', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                prompt: videoRequest.generatedPrompt,
+                duration: videoRequest.duration, // e.g., "10s"
+                aspect_ratio: videoRequest.aspectRatio, // e.g., "16:9"
+                model: 'sora-2', // Requesting Sora 2
+            }),
+        })
+
+        if (!response.ok) {
+            const errorText = await response.text()
+            throw new Error(`Kie.ai API Error: ${response.status} - ${errorText}`)
+        }
+
+        const data = await response.json()
+        const soraTaskId = data.id || data.task_id
+
+        if (!soraTaskId) {
+            throw new Error('No task ID returned from Kie.ai')
+        }
+
+        await prisma.videoRequest.update({
+            where: { id: requestId },
+            data: {
+                soraTaskId: soraTaskId,
+                videoStatus: 'processing',
+            },
+        })
+
+        revalidatePath('/dashboard')
+        return { success: true }
+
+    } catch (e: any) {
+        console.error('Failed to start video generation', e)
+        return { success: false, error: e.message || 'Failed to start generation' }
+    }
+}
+
+export async function checkVideoStatusAction(requestId: string) {
+    const apiKey = process.env.KIE_API_KEY
+    if (!apiKey) return { success: false, error: 'KIE_API_KEY is not set' }
+
+    try {
+        const videoRequest = await prisma.videoRequest.findUnique({
+            where: { id: requestId },
+        })
+
+        if (!videoRequest || !videoRequest.soraTaskId) {
+            return { success: false, error: 'Task ID not found' }
+        }
+
+        // Call Kie.ai Status API
+        const response = await fetch(`https://api.kie.ai/v1/video/status/${videoRequest.soraTaskId}`, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+            },
+        })
+
+        if (!response.ok) {
+            throw new Error(`Status check failed: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        let newStatus = videoRequest.videoStatus
+        let videoUrl = videoRequest.videoUrl
+
+        // Map status
+        if (data.status === 'completed' || data.status === 'succeeded') {
+            newStatus = 'completed'
+            videoUrl = data.url || data.video_url || data.result_url
+        } else if (data.status === 'failed') {
+            newStatus = 'failed'
+        }
+
+        if (newStatus !== videoRequest.videoStatus) {
+            await prisma.videoRequest.update({
+                where: { id: requestId },
+                data: {
+                    videoStatus: newStatus,
+                    videoUrl: videoUrl,
+                },
+            })
+            revalidatePath('/dashboard')
+        }
+
+        return {
+            success: true,
+            status: newStatus,
+            videoUrl: videoUrl
+        }
+
+    } catch (e: any) {
+        console.error('Failed to check status', e)
+        return { success: false, error: e.message }
+    }
+}
