@@ -24,14 +24,16 @@ export default function VideoRequestItem({ request }: { request: VideoRequest })
     const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
     const [isGeneratingVideo, setIsGeneratingVideo] = useState(false)
 
-    // Poll for video status if processing
+    // Poll for video status if active
     useEffect(() => {
         let interval: NodeJS.Timeout
-        if (request.videoStatus === 'processing') {
+        const activeStatuses = ['processing', 'waiting', 'queuing', 'generating']
+
+        if (activeStatuses.includes(request.videoStatus || '')) {
             interval = setInterval(async () => {
                 const result = await checkVideoStatusAction(request.id)
-                // If status changed (e.g. became completed or failed), refresh the UI
-                if (result.success && result.status && result.status !== 'processing') {
+                // If status changed, refresh the UI
+                if (result.success && result.status && result.status !== request.videoStatus) {
                     router.refresh()
                 }
             }, 5000) // Check every 5 seconds
