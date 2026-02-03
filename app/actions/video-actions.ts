@@ -269,7 +269,33 @@ export async function checkVideoStatusAction(requestId: string) {
 
         if (status === 'success' || status === 'completed') {
             newStatus = 'completed'
-            videoUrl = jobData.resultJson?.url || jobData.result?.video_url || jobData.video_url || jobData.url
+
+            // Log the success data to debug URL location
+            console.log('Video Completed. Job Data:', JSON.stringify(jobData, null, 2))
+
+            // Try to extract URL from various possible fields
+            if (jobData.resultJson) {
+                try {
+                    // resultJson might be a stringified JSON
+                    const parsedResult = typeof jobData.resultJson === 'string'
+                        ? JSON.parse(jobData.resultJson)
+                        : jobData.resultJson
+                    videoUrl = parsedResult.url || parsedResult.video_url || parsedResult.video || parsedResult.result_url
+                } catch (e) {
+                    console.error('Failed to parse resultJson:', e)
+                    // If parse fails, maybe it's just a direct url string? unlikely but possible
+                }
+            }
+
+            // If not found in resultJson, try direct fields
+            if (!videoUrl) {
+                videoUrl = jobData.result?.video_url || jobData.video_url || jobData.url || jobData.output?.url
+            }
+
+            if (!videoUrl) {
+                console.error('CRITICAL: Status is completed but could not find Video URL in response.')
+            }
+
         } else if (status === 'fail' || status === 'failed') {
             newStatus = 'failed'
             console.error('Video Generation Failed:', jobData.failMsg || 'Unknown error')
