@@ -289,22 +289,7 @@ export async function checkVideoStatusAction(requestId: string) {
             videoUrl: videoUrl
         }
 
-        if (newStatus !== videoRequest.videoStatus) {
-            await prisma.videoRequest.update({
-                where: { id: requestId },
-                data: {
-                    videoStatus: newStatus,
-                    videoUrl: videoUrl,
-                },
-            })
-            revalidatePath('/dashboard')
-        }
 
-        return {
-            success: true,
-            status: newStatus,
-            videoUrl: videoUrl
-        }
 
     } catch (e: any) {
         console.error('Failed to check status', e)
